@@ -14,6 +14,10 @@ from zero to demand. When traffic stops, it scales back down to zero.
 
 ![EKS cluster node group components](docs/eks-cluster-components.png)
 
+### Knative Serving components
+
+![Knative Serving components and control flow](docs/knative-serving-components.png)
+
 ### Knative Serving request paths
 
 ![Knative Serving request paths, cold start vs warm start](docs/knative-request-flow.png)

@@ -65,11 +65,13 @@ show "kubectl get pods -n inference -l serving.knative.dev/service=iris-classifi
 kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier
 
 show "for i in {1..60}; do curl -H 'Host: ${HOST}' ... & done; wait   # burst to trigger scale-out"
+BURST_PIDS=()
 for _ in $(seq 1 60); do
   curl -s -o /dev/null -w "%{http_code}\n" -H "Host: ${HOST}" -X POST http://localhost:8080/predict \
     -H "Content-Type: application/json" -d '{"features": [6.3, 3.3, 6.0, 2.5]}' &
+  BURST_PIDS+=("$!")
 done
-wait
+wait "${BURST_PIDS[@]}"
 
 show "kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier"
 kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier
