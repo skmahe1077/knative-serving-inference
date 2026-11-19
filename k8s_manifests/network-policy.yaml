@@ -1,0 +1,84 @@
+# Default-deny for the inference namespace, with narrow allows for exactly the
+# traffic Knative, DNS and monitoring need. Nothing in this namespace is
+# reachable directly from the internet — the ALB only ever talks to Kourier.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: inference
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: inference
+spec:
+  podSelector: {}
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+# Kourier's gateway forwards requests directly to pods on the queue-proxy port.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-from-kourier
+  namespace: inference
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kourier-system
+      ports:
+        - { protocol: TCP, port: 8012 }
+        - { protocol: TCP, port: 8013 }
+---
+# The Knative activator (in knative-serving) probes and proxies to pods while
+# they're scaling from zero.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-from-knative-serving
+  namespace: inference
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: knative-serving
+      ports:
+        - { protocol: TCP, port: 8012 }
+        - { protocol: TCP, port: 8013 }
+---
+# Prometheus (kube-prometheus-stack, installed into monitoring) scrapes the
+# app's /metrics and the queue-proxy's own metrics port.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-from-monitoring
+  namespace: inference
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - { protocol: TCP, port: 8080 }
+        - { protocol: TCP, port: 9090 }

@@ -1,0 +1,151 @@
+# The Grafana sidecar (enabled in monitoring/prometheus-values.yaml) watches
+# for ConfigMaps labeled grafana_dashboard=1 in any namespace and loads them
+# automatically — no manual import step during the demo. Source of truth for
+# the dashboard JSON is monitoring/dashboards/demo-dashboard.json; keep both
+# in sync.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-demo
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  demo-dashboard.json: |
+    {
+      "title": "Knative Scale-to-Zero Demo",
+      "uid": "knative-scale-to-zero-demo",
+      "schemaVersion": 39,
+      "version": 1,
+      "editable": true,
+      "refresh": "5s",
+      "time": { "from": "now-15m", "to": "now" },
+      "templating": {
+        "list": [
+          {
+            "name": "datasource",
+            "type": "datasource",
+            "query": "prometheus",
+            "current": {}
+          }
+        ]
+      },
+      "panels": [
+        {
+          "title": "Inference replica count",
+          "description": "Running pods for the iris-classifier Knative revision. Watch this drop to 0 after idle, then climb back up on new requests.",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [
+            {
+              "expr": "sum(kube_pod_status_phase{namespace=\"inference\", phase=\"Running\"})",
+              "legendFormat": "running pods"
+            }
+          ]
+        },
+        {
+          "title": "Request rate",
+          "description": "Requests/sec hitting the FastAPI app.",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{namespace=\"inference\"}[1m]))",
+              "legendFormat": "req/s"
+            }
+          ]
+        },
+        {
+          "title": "p95 latency",
+          "description": "95th percentile request latency, including any cold-start wait while the activator buffers requests for a scaling-up revision.",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "s" } },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace=\"inference\"}[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        },
+        {
+          "title": "Application errors (5xx/min)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{namespace=\"inference\", status=~\"5..\"}[1m]))",
+              "legendFormat": "5xx/s"
+            }
+          ]
+        },
+        {
+          "title": "Pod status (inference namespace)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [
+            {
+              "expr": "sum(kube_pod_status_phase{namespace=\"inference\"}) by (phase)",
+              "legendFormat": "{{phase}}"
+            }
+          ]
+        },
+        {
+          "title": "Karpenter application nodes",
+          "description": "Nodes Karpenter has provisioned for the application NodePool, labeled node-role=application. Falling to 0 after idle, and rising again under load, is Karpenter doing its job.",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [
+            {
+              "expr": "count(kube_node_labels{label_node_role=\"application\"})",
+              "legendFormat": "application nodes"
+            }
+          ]
+        },
+        {
+          "title": "System node group health",
+          "description": "Ready condition on the stable system node group (Knative/ingress controllers, monitoring, Karpenter itself).",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [
+            {
+              "expr": "sum(kube_node_status_condition{condition=\"Ready\", status=\"true\"})",
+              "legendFormat": "ready nodes"
+            }
+          ]
+        },
+        {
+          "title": "Inference pod CPU usage",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "short" } },
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"inference\"}[5m]))",
+              "legendFormat": "cores"
+            }
+          ]
+        },
+        {
+          "title": "Inference pod memory usage",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "fieldConfig": { "defaults": { "unit": "bytes" } },
+          "targets": [
+            {
+              "expr": "sum(container_memory_working_set_bytes{namespace=\"inference\"})",
+              "legendFormat": "working set"
+            }
+          ]
+        }
+      ]
+    }

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: inference
+  labels:
+    # Pod Security Admission: application workloads must meet the "restricted"
+    # profile (non-root, no privilege escalation, dropped capabilities, ...).
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

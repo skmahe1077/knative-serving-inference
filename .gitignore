@@ -1,0 +1,28 @@
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfplan
+terraform/tfplan
+terraform/crash.log
+terraform/terraform.tfvars
+terraform/override.tf
+terraform/override.tf.json
+# terraform.lock.hcl IS committed — it pins provider versions.
+
+# terraform/policies/aws-load-balancer-controller-iam-policy.json IS committed
+# as a deny-all placeholder — scripts/01-provision-infra.sh overwrites it with
+# the real policy (pinned to a specific controller release) before apply.
+
+# Python
+app/__pycache__/
+app/**/__pycache__/
+app/.pytest_cache/
+app/.venv/
+*.pyc
+
+# Local script state
+.last-image-uri
+
+# OS
+.DS_Store

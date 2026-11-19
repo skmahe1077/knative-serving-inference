@@ -1,0 +1,52 @@
+# Production profile: keeps a floor of warm replicas so real traffic never
+# pays a cold-start. Tune min-scale/target for your own latency and
+# availability requirements — these are reasonable starting defaults, not a
+# claim that this is correctly sized for every workload.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: iris-classifier
+  namespace: inference
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/min-scale: "2"
+        autoscaling.knative.dev/max-scale: "20"
+        autoscaling.knative.dev/target: "20"
+        autoscaling.knative.dev/target-utilization-percentage: "70"
+    spec:
+      containerConcurrency: 20
+      timeoutSeconds: 30
+      containers:
+        - image: IMAGE_URI_PLACEHOLDER
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop: ["ALL"]

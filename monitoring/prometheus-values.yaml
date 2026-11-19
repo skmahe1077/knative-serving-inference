@@ -1,0 +1,88 @@
+# Helm values for kube-prometheus-stack, installed by
+# scripts/04-install-knative-and-monitoring.sh into the "monitoring" namespace.
+#
+# helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+# helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+#   --version 66.3.1 --namespace monitoring --create-namespace -f monitoring/prometheus-values.yaml
+
+commonTolerations: &systemTolerations
+  - key: node-role
+    operator: Equal
+    value: system
+    effect: NoSchedule
+
+commonNodeSelector: &systemNodeSelector
+  node-role: system
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    resources:
+      requests: { cpu: 250m, memory: 512Mi }
+      limits: { cpu: 1000m, memory: 2Gi }
+    # No storageSpec: this cluster has no EBS CSI driver installed (not
+    # needed anywhere else), so Prometheus runs on emptyDir — metrics history
+    # is lost on pod restart, which is an acceptable trade for a demo cluster.
+    # Add the aws-ebs-csi-driver addon and a volumeClaimTemplate here for
+    # durable retention.
+    # Watch ServiceMonitors/PodMonitors in every namespace, not just ones
+    # created by this chart's own release — our app's ServiceMonitor lives in
+    # k8s_manifests/servicemonitor-inference.yaml, applied separately.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    tolerations: *systemTolerations
+    nodeSelector: *systemNodeSelector
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits: { cpu: 200m, memory: 256Mi }
+    tolerations: *systemTolerations
+    nodeSelector: *systemNodeSelector
+
+grafana:
+  # adminPassword intentionally omitted: the chart generates a random one and
+  # stores it in a Secret. See README for the retrieval command.
+  defaultDashboardsEnabled: true
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 256Mi }
+  tolerations: *systemTolerations
+  nodeSelector: *systemNodeSelector
+
+kube-state-metrics:
+  # Needed for the "Karpenter application nodes" panel in the demo dashboard,
+  # which filters on the node-role label.
+  metricLabelsAllowlist:
+    - "nodes=[node-role]"
+  tolerations: *systemTolerations
+  nodeSelector: *systemNodeSelector
+
+prometheus-node-exporter:
+  # Must run on every node, including Karpenter-provisioned application nodes
+  # that carry no taint — so no tolerations/nodeSelector override here.
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 100m, memory: 128Mi }
+
+prometheusOperator:
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 300m, memory: 256Mi }
+  tolerations: *systemTolerations
+  nodeSelector: *systemNodeSelector
+  # The webhook-cert patch Job runs once per install/upgrade and otherwise
+  # carries no toleration/nodeSelector, so it would needlessly trigger a
+  # Karpenter application node for a one-off hook job.
+  admissionWebhooks:
+    patch:
+      tolerations: *systemTolerations
+      nodeSelector: *systemNodeSelector

@@ -1,0 +1,18 @@
+# Picked up by kube-prometheus-stack (serviceMonitorSelectorNilUsesHelmValues:
+# false in monitoring/prometheus-values.yaml makes it watch all namespaces).
+# Knative's revision Service carries these labels automatically.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: iris-classifier
+  namespace: inference
+spec:
+  selector:
+    matchLabels:
+      serving.knative.dev/service: iris-classifier
+  namespaceSelector:
+    matchNames: ["inference"]
+  endpoints:
+    - port: http-usermetric
+      path: /metrics
+      interval: 15s

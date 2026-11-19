@@ -1,0 +1,32 @@
+# Copy to terraform.tfvars and fill in your own values.
+# terraform.tfvars is gitignored — never commit real account IDs/role ARNs here.
+
+aws_region         = "eu-west-1"
+cluster_name       = "knative-serving-demo"
+kubernetes_version = "1.31"
+vpc_cidr           = "10.42.0.0/16"
+availability_zones = ["eu-west-1a", "eu-west-1b", "eu-west-1c"]
+
+enable_public_eks_access = false
+public_access_cidrs      = []
+
+cluster_log_retention_days = 30
+
+# The administrator role used to bootstrap the cluster already gets admin access
+# automatically. Add other roles that also need it here.
+eks_admin_role_arns     = ["arn:aws:iam::<ACCOUNT_ID>:role/<your-admin-role>"]
+eks_developer_role_arns = []
+
+system_node_instance_types = ["m6i.large"]
+system_node_min_size       = 3
+system_node_max_size       = 6
+system_node_desired_size   = 3
+
+karpenter_instance_types = ["m6i.large", "m6i.xlarge", "m6a.large", "m6a.xlarge", "c6i.large", "c6i.xlarge"]
+karpenter_cpu_limit      = 64
+
+# Leave domain_name empty to keep the demo internal-only.
+domain_name           = ""
+acm_certificate_arn   = ""
+enable_public_ingress = false
+enable_waf            = true
