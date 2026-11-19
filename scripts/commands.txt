@@ -10,8 +10,8 @@ kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier
 # look at the pod in detail
 kubectl describe pod -n inference <pod-name>
 
-# watch it scale down to zero
-watch -n2 kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier
+# watch it scale down to zero (ctrl-C once it hits zero)
+kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier -w
 
 # one request, this is the cold start
 curl -H 'Host: iris-classifier.inference.svc.cluster.local' -X POST http://localhost:8080/predict -d '{"features": [5.1, 3.5, 1.4, 0.2]}'

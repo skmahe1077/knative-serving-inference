@@ -44,7 +44,7 @@ if [ -n "${POD}" ]; then
   kubectl describe pod -n inference "${POD}"
 fi
 
-show "watch -n2 kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier   # until it scales to zero"
+show "kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier   # until it scales to zero"
 for _ in $(seq 1 60); do
   OUT="$(kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier --no-headers 2>/dev/null)"
   if [ -z "${OUT}" ]; then
