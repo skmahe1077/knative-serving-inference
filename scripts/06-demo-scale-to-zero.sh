@@ -1,57 +1,75 @@
 #!/usr/bin/env bash
-# Walks through the scale-to-zero demo: shows the revision scale down while
-# idle, sends a request to trigger a cold start, then fires a burst of load
-# to show scale-out. Reaches the service through a local port-forward to
-# Kourier, so it works whether or not a public domain is configured.
+# Scale-to-zero demo. Prints each command before running it, and pauses for
+# enter, so the audience sees exactly what's happening against Knative.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 require kubectl
 require curl
 
-HOST="$(kubectl get ksvc iris-classifier -n inference -o jsonpath='{.status.url}' | sed -E 's#https?://##')"
-echo "==> service host: ${HOST}"
+show() {
+  echo
+  echo "\$ $1"
+  read -r -p "press enter to run this..." _
+}
 
-# No public domain configured (the internal-only default) means Knative's
-# route only has a *.svc.cluster.local vhost, which Kourier only serves on
-# its internal listener/Service - the external one 404s on that Host header.
-# With a real domain configured, switch to svc/kourier instead.
+HOST="$(kubectl get ksvc iris-classifier -n inference -o jsonpath='{.status.url}' | sed -E 's#https?://##')"
+
+# No public domain -> cluster-local host -> use kourier-internal, not kourier.
 KOURIER_SVC="kourier-internal"
 case "${HOST}" in
   *.svc.cluster.local) KOURIER_SVC="kourier-internal" ;;
   *) KOURIER_SVC="kourier" ;;
 esac
 
-echo "==> current pods (expect this to reach 0 after ~30-60s idle):"
-kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier
-
-echo "==> port-forwarding to ${KOURIER_SVC} on :8080 (ctrl-C when done)"
+show "kubectl -n kourier-system port-forward svc/${KOURIER_SVC} 8080:80"
 kubectl -n kourier-system port-forward "svc/${KOURIER_SVC}" 8080:80 >/tmp/kourier-port-forward.log 2>&1 &
 PF_PID=$!
 trap 'kill ${PF_PID} 2>/dev/null' EXIT
 sleep 2
 
-echo "==> watching pod count drop to zero (auto-continues once it does, or after ~2 min):"
+# Make sure a pod is running first so the audience can watch it scale down.
+COUNT="$(kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+if [ "${COUNT}" = "0" ]; then
+  show "curl -H 'Host: ${HOST}' -X POST http://localhost:8080/predict -d '{\"features\": [5.1, 3.5, 1.4, 0.2]}'"
+  curl -s -o /dev/null -H "Host: ${HOST}" -X POST http://localhost:8080/predict \
+    -H "Content-Type: application/json" -d '{"features": [5.1, 3.5, 1.4, 0.2]}'
+fi
+
+show "kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier"
+kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier
+
+POD="$(kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
+if [ -n "${POD}" ]; then
+  show "kubectl describe pod -n inference ${POD}"
+  kubectl describe pod -n inference "${POD}"
+fi
+
+show "watch -n2 kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier   # until it scales to zero"
 for _ in $(seq 1 60); do
-  COUNT="$(kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier --no-headers 2>/dev/null | wc -l | tr -d ' ')"
-  echo "  pods: ${COUNT}"
-  [ "${COUNT}" = "0" ] && break
+  OUT="$(kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier --no-headers 2>/dev/null)"
+  if [ -z "${OUT}" ]; then
+    echo "pods: 0"
+    break
+  fi
+  echo "${OUT}"
   sleep 2
 done
 
-echo "==> sending one request (cold start if scaled to zero):"
+show "curl -H 'Host: ${HOST}' -X POST http://localhost:8080/predict -d '{\"features\": [5.1, 3.5, 1.4, 0.2]}'   # cold start"
 time curl -s -H "Host: ${HOST}" -X POST http://localhost:8080/predict \
   -H "Content-Type: application/json" \
   -d '{"features": [5.1, 3.5, 1.4, 0.2]}'
 echo
 
-echo "==> sending a burst of concurrent requests to trigger scale-out:"
-# Kept well under 150: a single kubectl port-forward tunnel starts dropping
-# connections above that under this much concurrency.
+show "kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier"
+kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier
+
+show "for i in {1..60}; do curl -H 'Host: ${HOST}' ... & done; wait   # burst to trigger scale-out"
 for _ in $(seq 1 60); do
   curl -s -o /dev/null -w "%{http_code}\n" -H "Host: ${HOST}" -X POST http://localhost:8080/predict \
     -H "Content-Type: application/json" -d '{"features": [6.3, 3.3, 6.0, 2.5]}' &
 done
 wait
 
-echo "==> pods after the burst (watch Karpenter add nodes in Grafana):"
+show "kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier"
 kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier

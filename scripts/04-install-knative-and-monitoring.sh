@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# Installs Knative Serving + Kourier, and kube-prometheus-stack (Prometheus +
-# Grafana), onto the cluster Terraform created. These are plain
-# Kubernetes-layer installs via kubectl/helm — not part of `terraform apply`
-# — so they can be iterated on independently of the AWS infrastructure.
+# Installs Knative Serving, Kourier, and kube-prometheus-stack.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 require kubectl

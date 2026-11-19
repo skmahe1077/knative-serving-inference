@@ -1,6 +1,5 @@
-# Default-deny for the inference namespace, with narrow allows for exactly the
-# traffic Knative, DNS and monitoring need. Nothing in this namespace is
-# reachable directly from the internet — the ALB only ever talks to Kourier.
+# Default-deny for the inference namespace, plus narrow allows for DNS,
+# Knative, and monitoring traffic.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -27,7 +26,6 @@ spec:
         - { protocol: UDP, port: 53 }
         - { protocol: TCP, port: 53 }
 ---
-# Kourier's gateway forwards requests directly to pods on the queue-proxy port.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -45,8 +43,6 @@ spec:
         - { protocol: TCP, port: 8012 }
         - { protocol: TCP, port: 8013 }
 ---
-# The Knative activator (in knative-serving) probes and proxies to pods while
-# they're scaling from zero.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -64,8 +60,6 @@ spec:
         - { protocol: TCP, port: 8012 }
         - { protocol: TCP, port: 8013 }
 ---
-# Prometheus (kube-prometheus-stack, installed into monitoring) scrapes the
-# app's /metrics and the queue-proxy's own metrics port.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

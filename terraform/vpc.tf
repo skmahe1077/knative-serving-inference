@@ -16,10 +16,8 @@ module "vpc" {
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  # Worker nodes never get a public IP; they reach the internet only via NAT.
   map_public_ip_on_launch = false
 
-  # Required for AWS-managed load balancers (ALB/NLB) and Karpenter to discover subnets.
   public_subnet_tags = {
     "kubernetes.io/role/elb"                    = "1"
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
@@ -37,8 +35,7 @@ module "vpc" {
   flow_log_cloudwatch_log_group_retention_in_days = var.cluster_log_retention_days
 }
 
-# Gateway endpoint for S3 — ECR image layers and Terraform state traffic stay off the
-# public internet and incur no hourly/data charge.
+# S3 gateway endpoint: no hourly/data charge, keeps ECR/state traffic off the internet.
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = module.vpc.vpc_id
   service_name      = "com.amazonaws.${var.aws_region}.s3"
@@ -59,15 +56,10 @@ resource "aws_security_group" "vpc_endpoints" {
     cidr_blocks = [var.vpc_cidr]
   }
 
-  # No egress rule: interface endpoint ENIs only ever receive connections,
-  # they never initiate outbound traffic themselves.
-
   tags = { Name = "${var.cluster_name}-vpce" }
 }
 
-# Interface endpoints so nodes in private subnets can reach ECR, STS, CloudWatch Logs
-# and the EC2/ELB APIs (used by Karpenter and the AWS Load Balancer Controller) without
-# going through the NAT gateways.
+# Interface endpoints so private-subnet nodes can reach these APIs without a NAT gateway.
 locals {
   interface_endpoint_services = [
     "ecr.api",

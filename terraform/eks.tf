@@ -1,5 +1,4 @@
-# Customer-managed KMS key for EKS secrets envelope encryption (Kubernetes Secrets at
-# rest). This account owns and rotates the key; EKS only ever sees ciphertext.
+# Customer-managed KMS key for EKS secrets envelope encryption.
 resource "aws_kms_key" "eks" {
   description             = "EKS secrets envelope encryption for ${var.cluster_name}"
   deletion_window_in_days = 30
@@ -21,9 +20,7 @@ module "eks" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
-  # Private access is always on. Public access defaults to off; flip
-  # enable_public_eks_access only if you have no other way to reach the endpoint
-  # (see README "Accessing the private API endpoint" for the recommended alternative).
+  # Private access always on; public defaults off (see README).
   cluster_endpoint_private_access      = true
   cluster_endpoint_public_access       = var.enable_public_eks_access
   cluster_endpoint_public_access_cidrs = var.enable_public_eks_access ? var.public_access_cidrs : []
@@ -39,7 +36,6 @@ module "eks" {
     resources        = ["secrets"]
   }
 
-  # EKS access entries (not the legacy aws-auth ConfigMap) drive cluster access.
   authentication_mode                      = "API"
   enable_cluster_creator_admin_permissions = true
 
@@ -75,9 +71,8 @@ module "eks" {
     }
     coredns = {
       most_recent = true
-      # CoreDNS is a plain Deployment, not a DaemonSet with a blanket
-      # toleration like kube-proxy/vpc-cni — without this it can never
-      # schedule onto the tainted system node group.
+      # needs a toleration for the system node taint; unlike kube-proxy/vpc-cni
+      # it's a Deployment, not a DaemonSet with a blanket toleration already.
       configuration_values = jsonencode({
         tolerations = [
           {
@@ -105,9 +100,7 @@ module "eks" {
     system = {
       name = "${var.cluster_name}-system"
 
-      # Explicit, short IAM role name: the module's default name-prefix
-      # ("<node-group-iam-role-name>-") can exceed IAM's 38-character limit
-      # for name_prefix once it's built from a longer cluster_name.
+      # explicit short name: default name-prefix can exceed IAM's 38-char limit
       iam_role_name            = "${var.cluster_name}-system-ng"
       iam_role_use_name_prefix = false
 
@@ -125,9 +118,7 @@ module "eks" {
         "node-role" = "system"
       }
 
-      # Keeps application workloads off this stable pool; they land on
-      # Karpenter-provisioned nodes instead (see karpenter.tf). Every system
-      # component's Helm values/manifests carry a matching toleration.
+      # keeps app pods off this pool; they go to Karpenter nodes instead
       taints = {
         system = {
           key    = "node-role"

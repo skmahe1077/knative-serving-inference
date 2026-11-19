@@ -1,5 +1,3 @@
-# AWS Load Balancer Controller — provisions the ALB in front of Kourier from
-# Kubernetes Ingress/Service objects (see k8s_manifests/).
 resource "helm_release" "aws_load_balancer_controller" {
   name      = "aws-load-balancer-controller"
   namespace = "kube-system"
@@ -35,11 +33,8 @@ resource "helm_release" "aws_load_balancer_controller" {
   depends_on = [module.eks, aws_eks_pod_identity_association.lb_controller]
 }
 
-# --- Optional public TLS exposure (controlled by var.domain_name) ---
-#
-# Requesting this certificate does not make it usable: DNS validation records
-# must be created and to propagate before ACM issues it. Leave domain_name
-# empty for the internal-only demo path.
+# Requesting the cert doesn't make it usable - DNS validation still has to
+# happen. Leave domain_name empty for internal-only.
 resource "aws_acm_certificate" "app" {
   count = var.domain_name != "" && var.acm_certificate_arn == "" ? 1 : 0
 
@@ -51,11 +46,7 @@ resource "aws_acm_certificate" "app" {
   }
 }
 
-# --- Optional WAF in front of a publicly exposed ALB ---
-#
-# Attaching this to the ALB is a manual step: the ALB is created by the AWS
-# Load Balancer Controller from a Kubernetes Ingress, so its ARN only exists
-# after that Ingress is applied. Associate it with:
+# Attach to the ALB manually once it exists:
 #   aws wafv2 associate-web-acl --web-acl-arn <waf_web_acl_arn output> --resource-arn <alb-arn>
 resource "aws_wafv2_web_acl" "app" {
   count = var.enable_public_ingress && var.enable_waf ? 1 : 0

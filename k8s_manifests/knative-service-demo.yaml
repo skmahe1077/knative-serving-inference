@@ -1,5 +1,4 @@
-# Demo profile: minScale 0 so the audience sees a real scale-to-zero and a
-# cold start. Not meant for production traffic — see knative-service-production.yaml.
+# Demo profile: minScale 0 for scale-to-zero and cold start.
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
@@ -11,21 +10,10 @@ spec:
       annotations:
         autoscaling.knative.dev/min-scale: "0"
         autoscaling.knative.dev/max-scale: "10"
-        # Target in-flight requests per pod before the autoscaler adds another.
         autoscaling.knative.dev/target: "20"
-        # How long an idle revision stays up before scaling to zero.
         autoscaling.knative.dev/scale-to-zero-pod-retention-period: "30s"
     spec:
-      # Node placement: the system managed node group (eks.tf) carries a
-      # node-role=system:NoSchedule taint, so these pods can never land there.
-      # They schedule only on Karpenter-provisioned application nodes
-      # (karpenter.tf), triggering a new node when none exist yet.
       containerConcurrency: 20
-      # 60s, not Knative's usual 30s default: when Karpenter has to launch a
-      # brand-new EC2 instance for the first request after a full scale-down
-      # (no warm application node left), node launch-to-Ready alone measured
-      # ~31s in testing, before the pod even starts — see README "Cold start
-      # has two very different regimes" for real numbers.
       timeoutSeconds: 60
       containers:
         - image: IMAGE_URI_PLACEHOLDER

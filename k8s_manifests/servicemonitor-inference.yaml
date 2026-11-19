@@ -1,6 +1,4 @@
-# Picked up by kube-prometheus-stack (serviceMonitorSelectorNilUsesHelmValues:
-# false in monitoring/prometheus-values.yaml makes it watch all namespaces).
-# Knative's revision Service carries these labels automatically.
+# Picked up by kube-prometheus-stack (see monitoring/prometheus-values.yaml).
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

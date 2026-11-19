@@ -1,8 +1,3 @@
-# Karpenter provisions the application node pool on demand. Its own controller
-# runs on the system node group (eks.tf), so Karpenter never depends on capacity
-# it manages itself — if it crashes or is slow to schedule nodes, it still comes
-# back up on stable infrastructure.
-
 module "karpenter" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"
   version = "20.31.1"
@@ -11,9 +6,7 @@ module "karpenter" {
 
   enable_pod_identity             = true
   create_pod_identity_association = true
-  # The module defaults the association to kube-system; the helm_release
-  # below installs Karpenter into its own "karpenter" namespace instead.
-  namespace = "karpenter"
+  namespace                       = "karpenter" # module defaults to kube-system; override to match helm_release below
 
   node_iam_role_additional_policies = {
     AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
@@ -40,7 +33,6 @@ resource "helm_release" "karpenter" {
         interruptionQueue = module.karpenter.queue_name
       }
       replicas = 2
-      # Karpenter must run on the stable system pool, not on nodes it provisions.
       tolerations = [
         {
           key      = "node-role"
@@ -65,9 +57,6 @@ resource "kubectl_manifest" "karpenter_node_class" {
     metadata   = { name = "application-default" }
     spec = {
       amiFamily = "AL2023"
-      # Karpenter v1's EC2NodeClass requires amiSelectorTerms explicitly —
-      # amiFamily alone no longer implies AMI discovery. This alias tracks
-      # AWS's latest AL2023 EKS-optimized AMI automatically.
       amiSelectorTerms = [
         { alias = "al2023@latest" }
       ]
@@ -109,8 +98,6 @@ resource "kubectl_manifest" "karpenter_node_pool" {
     spec = {
       template = {
         metadata = {
-          # Knative Service manifests select this label to force application
-          # pods onto Karpenter-managed nodes (see k8s_manifests/).
           labels = { "node-role" = "application" }
         }
         spec = {
@@ -130,9 +117,6 @@ resource "kubectl_manifest" "karpenter_node_pool" {
         cpu = tostring(var.karpenter_cpu_limit)
       }
       disruption = {
-        # Lets idle application nodes terminate quickly after the demo's
-        # scale-to-zero traffic drops, while a disruption budget keeps
-        # consolidation from taking out nodes serving live traffic.
         consolidationPolicy = "WhenEmptyOrUnderutilized"
         consolidateAfter    = "1m"
         budgets = [

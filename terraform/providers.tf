@@ -27,8 +27,7 @@ provider "helm" {
   }
 }
 
-# Used for applying Karpenter's EC2NodeClass/NodePool CRs, which the kubernetes
-# provider's generic manifest support historically has handled less reliably.
+# Applies Karpenter's EC2NodeClass/NodePool CRs.
 provider "kubectl" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)

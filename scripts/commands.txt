@@ -1,0 +1,26 @@
+# open a tunnel to the gateway so curl can reach the service (runs in background)
+kubectl -n kourier-system port-forward svc/kourier-internal 8080:80 &
+
+# wake the app up if nothing's running yet
+curl -H 'Host: iris-classifier.inference.svc.cluster.local' -X POST http://localhost:8080/predict -d '{"features": [5.1, 3.5, 1.4, 0.2]}'
+
+# check what pods are running right now
+kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier
+
+# look at the pod in detail
+kubectl describe pod -n inference <pod-name>
+
+# watch it scale down to zero
+watch -n2 kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier
+
+# one request, this is the cold start
+curl -H 'Host: iris-classifier.inference.svc.cluster.local' -X POST http://localhost:8080/predict -d '{"features": [5.1, 3.5, 1.4, 0.2]}'
+
+# see the pod that just spun up
+kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier
+
+# hit it with a burst of traffic to force scale-out
+for i in {1..60}; do curl -H 'Host: iris-classifier.inference.svc.cluster.local' -X POST http://localhost:8080/predict -d '{"features": [6.3, 3.3, 6.0, 2.5]}' & done; wait
+
+# more pods should show up now
+kubectl get pods -n inference -l serving.knative.dev/service=iris-classifier

@@ -12,8 +12,7 @@ public_access_cidrs      = []
 
 cluster_log_retention_days = 30
 
-# The administrator role used to bootstrap the cluster already gets admin access
-# automatically. Add other roles that also need it here.
+# The role applying terraform already gets admin access automatically.
 eks_admin_role_arns     = ["arn:aws:iam::<ACCOUNT_ID>:role/<your-admin-role>"]
 eks_developer_role_arns = []
 

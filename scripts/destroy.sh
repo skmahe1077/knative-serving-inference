@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# Tears down everything: the app, Knative/Kourier, monitoring, and finally
-# the AWS infrastructure via `terraform destroy`. Run this as soon as you're
-# done with the demo — the EKS cluster, NAT gateways and any Karpenter nodes
-# bill continuously while they exist.
+# Tears down the app, Knative/Kourier, monitoring, then the AWS infra.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 require kubectl
@@ -30,5 +27,4 @@ kubectl delete -f "https://github.com/knative/serving/releases/download/knative-
 echo "==> terraform destroy (this also removes any live Karpenter-provisioned nodes)"
 terraform -chdir="${TERRAFORM_DIR}" destroy
 
-echo "==> done. Double-check the AWS console for any resources left behind"
-echo "    (ECR repository and its images are not managed by Terraform — see README)."
+echo "==> done. ECR repo and images are not managed by Terraform — see README."

@@ -1,7 +1,4 @@
-# Production profile: keeps a floor of warm replicas so real traffic never
-# pays a cold-start. Tune min-scale/target for your own latency and
-# availability requirements — these are reasonable starting defaults, not a
-# claim that this is correctly sized for every workload.
+# Production profile: minScale 2, tune for your own latency/availability needs.
 apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:

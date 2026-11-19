@@ -5,7 +5,10 @@
   "version": 1,
   "editable": true,
   "refresh": "5s",
-  "time": { "from": "now-15m", "to": "now" },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
   "templating": {
     "list": [
       {
@@ -19,10 +22,18 @@
   "panels": [
     {
       "title": "Inference replica count",
-      "description": "Running pods for the iris-classifier Knative revision. Watch this drop to 0 after idle, then climb back up on new requests.",
+      "description": "Running pods for iris-classifier.",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "targets": [
         {
           "expr": "sum(kube_pod_status_phase{namespace=\"inference\", phase=\"Running\"})",
@@ -34,8 +45,16 @@
       "title": "Request rate",
       "description": "Requests/sec hitting the FastAPI app.",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "targets": [
         {
           "expr": "sum(rate(http_requests_total{namespace=\"inference\"}[1m]))",
@@ -45,11 +64,23 @@
     },
     {
       "title": "p95 latency",
-      "description": "95th percentile request latency, including any cold-start wait while the activator buffers requests for a scaling-up revision.",
+      "description": "Includes cold-start wait during scale-from-zero.",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      },
       "targets": [
         {
           "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace=\"inference\"}[5m])) by (le))",
@@ -60,8 +91,16 @@
     {
       "title": "Application errors (5xx/min)",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "targets": [
         {
           "expr": "sum(rate(http_requests_total{namespace=\"inference\", status=~\"5..\"}[1m]))",
@@ -72,8 +111,16 @@
     {
       "title": "Pod status (inference namespace)",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "targets": [
         {
           "expr": "sum(kube_pod_status_phase{namespace=\"inference\"}) by (phase)",
@@ -83,10 +130,18 @@
     },
     {
       "title": "Karpenter application nodes",
-      "description": "Nodes Karpenter has provisioned for the application NodePool, labeled node-role=application. Falling to 0 after idle, and rising again under load, is Karpenter doing its job.",
+      "description": "Nodes Karpenter has provisioned for app pods.",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "targets": [
         {
           "expr": "count(kube_node_labels{label_node_role=\"application\"})",
@@ -96,10 +151,18 @@
     },
     {
       "title": "System node group health",
-      "description": "Ready condition on the stable system node group (Knative/ingress controllers, monitoring, Karpenter itself).",
+      "description": "Ready count on the system node group.",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
       "targets": [
         {
           "expr": "sum(kube_node_status_condition{condition=\"Ready\", status=\"true\"})",
@@ -110,9 +173,21 @@
     {
       "title": "Inference pod CPU usage",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "fieldConfig": { "defaults": { "unit": "short" } },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      },
       "targets": [
         {
           "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"inference\"}[5m]))",
@@ -123,9 +198,21 @@
     {
       "title": "Inference pod memory usage",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
-      "datasource": { "type": "prometheus", "uid": "${datasource}" },
-      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      },
       "targets": [
         {
           "expr": "sum(container_memory_working_set_bytes{namespace=\"inference\"})",
