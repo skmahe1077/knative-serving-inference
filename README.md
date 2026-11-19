@@ -1,21 +1,22 @@
 # knative-serving-demo
 
-FastAPI inference app served by Knative Serving on a production-grade Amazon
-EKS cluster, scaling from zero to demand.
+A FastAPI app serving real AI model inference (a scikit-learn classifier),
+run on Knative Serving on a production-grade Amazon EKS cluster, scaling
+from zero to demand. When traffic stops, it scales back down to zero.
 
 ## Architecture
 
 ```
 Internet (optional) ──▶ ALB (AWS LB Controller) ──▶ Kourier Gateway ──▶ Knative Revision pod
                                                                               │
-                          VPC — 3 AZs, private subnets                      │
+                          VPC, 3 AZs, private subnets                       │
                           ┌─────────────────────────────────────────────────┤
                           │  System node group (EKS managed, tainted)       │
                           │    Knative control plane, Kourier, Karpenter,   │
                           │    AWS LB Controller, Prometheus/Grafana        │
                           │                                                 │
                           │  Application nodes (Karpenter, on-demand)      ◀┘
-                          │    iris-classifier pods only — scale to 0 when idle
+                          │    iris-classifier pods only, scale to 0 when idle
                           └─────────────────────────────────────────────────┘
 ```
 
@@ -51,7 +52,7 @@ aws s3api put-public-access-block --bucket <your-state-bucket> \
   --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
 ```
 
-Terraform >= 1.10 can lock state natively (`use_lockfile=true`); older
+Terraform >= 1.10 can lock state natively (`use_lockfile=true`). Older
 versions need a DynamoDB table passed as `TF_LOCK_TABLE`.
 
 ## Deployment workflow
@@ -73,8 +74,6 @@ scripts/07-view-dashboards.sh                   # Grafana, port-forwarded
 scripts/destroy.sh                              # tear down everything when done
 ```
 
-Run 01-04 before the talk; nothing here provisions fast enough to run live.
-
 ## Accessing the private API endpoint
 
 `enable_public_eks_access` defaults to `false`. Reach the private endpoint
@@ -84,21 +83,21 @@ forwarding. Otherwise set `enable_public_eks_access = true` and scope
 
 ## Workload profiles
 
-- **`knative-service-demo.yaml`** — `minScale: 0`, shows scale-to-zero and
+- **`knative-service-demo.yaml`**: `minScale: 0`, shows scale-to-zero and
   cold start.
-- **`knative-service-production.yaml`** — `minScale: 2`, higher resources.
+- **`knative-service-production.yaml`**: `minScale: 2`, higher resources.
   Tune `min-scale`/`target` for your own latency and availability needs.
 
-### Cold start, two regimes
+### Cold start: two different experiences
 
 - Warm application node already exists: ~4s (pod scheduling + readiness).
 - No application node, Karpenter launches a new EC2 instance: node
   launch-to-`Initialized` alone measured ~31s. `timeoutSeconds` in the demo
-  profile is 60 (not Knative's default 30) to absorb this live on stage —
-  still not a hard guarantee, EC2 launch time varies.
+  profile is 60 (not Knative's default 30) to absorb this live on stage,
+  though that's still not a hard guarantee since EC2 launch time varies.
 
-Removing a pod (scale-to-zero) and terminating a node are different things:
-cost savings only happen once the node goes away too, and that's also what
+Removing a pod (scale-to-zero) and terminating a node are different things.
+Cost savings only happen once the node goes away too, and that's also what
 makes the next cold start slow. Workloads that can't tolerate an occasional
 slow first request should use the production profile with `minScale >= 1`.
 
@@ -122,21 +121,21 @@ start both confirmed, burst load scales out correctly.
 ### Verifying specific properties
 
 - **High availability**: `kubectl get nodes -L topology.kubernetes.io/zone`
-  across all three AZs; cordon a system node and confirm pods reschedule.
-- **IAM permissions**: `aws eks list-access-entries --cluster-name <name>`;
-  check a pod's Pod Identity association rather than assuming it's attached.
+  across all three AZs. Cordon a system node and confirm pods reschedule.
+- **IAM permissions**: `aws eks list-access-entries --cluster-name <name>`.
+  Check a pod's Pod Identity association rather than assuming it's attached.
 - **Private networking**: `aws eks describe-cluster` should show the public
   endpoint disabled/CIDR-restricted.
 - **Node recovery**: delete a system node or an app pod and watch it get
   replaced.
 - **Autoscaling**: `scripts/06-demo-scale-to-zero.sh` exercises both the
-  Knative autoscaler and Karpenter in one pass — watch both in Grafana.
+  Knative autoscaler and Karpenter in one pass. Watch both in Grafana.
 
 ## Cost and what scale-to-zero actually saves
 
 Removing an idle pod frees capacity on a node that's still running and still
 billing. Cost only drops once Karpenter also removes that node. The system
-node group never scales to zero — that's the floor cost of this setup.
+node group never scales to zero, so that's the floor cost of this setup.
 
 To measure rather than assume:
 
@@ -148,12 +147,12 @@ To measure rather than assume:
 - AWS cost: tag-filtered Cost Explorer on `Project=<cluster_name>`, or
   `infracost breakdown --path terraform/`.
 
-No carbon savings numbers here — that needs real grid carbon-intensity data
-this project doesn't collect.
+We don't report carbon savings here. That would need real grid
+carbon-intensity data, which this project doesn't collect.
 
 ## Cleaning up
 
 `scripts/destroy.sh` removes the app, Knative/Kourier, monitoring, then runs
-`terraform destroy`. The ECR repository and the Terraform state bucket are
-created out of band and survive `destroy.sh` — remove them separately if
-you're fully done.
+`terraform destroy`. The ECR repository and the Terraform state bucket were
+created out of band, so they survive `destroy.sh`. Remove them separately
+if you're fully done.
