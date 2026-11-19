@@ -25,6 +25,6 @@ kubectl delete -f "https://github.com/knative/serving/releases/download/knative-
 kubectl delete -f "https://github.com/knative/serving/releases/download/knative-v1.16.0/serving-crds.yaml" --ignore-not-found
 
 echo "==> terraform destroy (this also removes any live Karpenter-provisioned nodes)"
-terraform -chdir="${TERRAFORM_DIR}" destroy
+terraform -chdir="${TERRAFORM_DIR}" destroy -auto-approve
 
 echo "==> done. ECR repo and images are not managed by Terraform — see README."

@@ -6,19 +6,17 @@ from zero to demand. When traffic stops, it scales back down to zero.
 
 ## Architecture
 
-```
-Internet (optional) ──▶ ALB (AWS LB Controller) ──▶ Kourier Gateway ──▶ Knative Revision pod
-                                                                              │
-                          VPC, 3 AZs, private subnets                       │
-                          ┌─────────────────────────────────────────────────┤
-                          │  System node group (EKS managed, tainted)       │
-                          │    Knative control plane, Kourier, Karpenter,   │
-                          │    AWS LB Controller, Prometheus/Grafana        │
-                          │                                                 │
-                          │  Application nodes (Karpenter, on-demand)      ◀┘
-                          │    iris-classifier pods only, scale to 0 when idle
-                          └─────────────────────────────────────────────────┘
-```
+### Multi-AZ VPC and EKS architecture
+
+![Multi-AZ EKS VPC architecture](docs/vpc-eks-architecture.png)
+
+### EKS cluster components
+
+![EKS cluster node group components](docs/eks-cluster-components.png)
+
+### Knative Serving request paths
+
+![Knative Serving request paths, cold start vs warm start](docs/knative-request-flow.png)
 
 System nodes carry a `node-role=system:NoSchedule` taint, so app pods only
 run on Karpenter-provisioned nodes. Karpenter itself runs on the system pool.
