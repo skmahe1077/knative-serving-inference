@@ -1,4 +1,4 @@
-# knative-serving-demo
+# knative-serving-inference
 
 A FastAPI app serving real AI model inference (a scikit-learn classifier),
 run on Knative Serving on a production-grade Amazon EKS cluster, scaling
